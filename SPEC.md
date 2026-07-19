@@ -1,10 +1,10 @@
 ## 1. Product Overview
-A web-based wallet designed for the Philippine market that looks and acts like a traditional e-wallet (e.g., GCash, Maya), but uses the Stellar blockchain as its settlement layer. The wallet abstracts the complexities of crypto (gas fees, complex addresses, key management) while allowing users to benefit from stablecoins (PHPC, USDC), instant global remittances, and zero-fee interoperability via the national QR Ph standard.
+Pocketlet is a web-based wallet designed for the Philippine market that looks and acts like a traditional e-wallet (e.g., GCash, Maya), but uses the Stellar blockchain as its settlement layer. The wallet abstracts the complexities of crypto (gas fees, complex addresses, key management) while allowing users to hold and move stable digital dollars globally.
 
 ### Core Value Proposition
-* **Invisible Crypto:** Users hold and spend PHP (via PHPC stablecoin) or USD (via USDC) without realizing they are interacting with a blockchain.
-* **Optional Custody:** Users can opt into self-custody (manage their own keys) or abstracted custody (log in via email/passkey via Account Abstraction).
-* **Frictionless On/Off Ramps:** Seamless deposit of PHP and direct payment to any local merchant via QR Ph.
+* **Invisible Crypto:** Users hold and spend USD (via USDC) without realizing they are interacting with a blockchain.
+* **Abstracted Custody:** Users sign up with email and authenticate with a passkey. A Soroban smart contract wallet is deployed on their behalf — no seed phrase required.
+* **Global Payments, Local Feel:** Users can receive international payments in USDC and eventually convert to local PHP spending power through planned fiat off-ramps.
 
 ---
 
@@ -17,64 +17,119 @@ A web-based wallet designed for the Philippine market that looks and acts like a
 ## 3. Core Features (V1 MVP)
 
 ### 3.1. Account Creation & Custody (Soroban Powered)
-* **Default:** Abstracted Custody. Users sign up with an Email/Password (or Passkey). A Soroban smart contract wallet is deployed on their behalf.
-* **Opt-In Self-Custody:** Advanced users can opt to export or manage their own seed phrase.
-* **Sponsorship:** The platform covers standard Stellar network fees (which are fractions of a cent) to keep the crypto experience invisible.
+* **Default:** Abstracted Custody. Users sign up with an email and authenticate with a passkey. A Soroban smart contract wallet is deployed on their behalf.
+* **Smart Wallet:** One lightweight Soroban smart wallet per user. The passkey acts as the primary signer.
+* **Fee Sponsorship:** The platform covers standard Stellar network fees on behalf of the user during sponsored operations. The total cost is recovered transparently through the transaction fee displayed to the user.
+* **Self-Custody Export:** Deferred to V2.
 
-### 3.2. Fiat On-Ramp (PHP -> Stablecoin)
-* **Mechanism:** Integration with a Stellar Anchor operating in the Philippines (e.g., Coins.ph for PHPC, or PeraHub for USDC).
-* **Flow:** User clicks "Deposit" -> Uses local payment methods (InstaPay, GCash, Bank Transfer) -> The Anchor mints PHPC or USDC directly to the user's Stellar wallet address.
+### 3.2. Deposits (V1)
+* **No Fiat On-Ramp in V1:** Direct PHP-to-USDC on-ramp via a Stellar Anchor is deferred to V2.
+* **External Deposit:** Users receive USDC or XLM by sharing their Stellar address or a generated QR code. Funds are received directly into their smart wallet.
 
-### 3.3. Peer-to-Peer (P2P) Transfers & Crypto Swaps
-* **P2P:** Users can send PHPC or USDC to other users via phone number, email, or internal username (mapped to Stellar addresses via federated addresses).
-* **Swapping:** Users can swap between supported assets (e.g., USDC <-> PHPC <-> XLM) utilizing Stellar's native Decentralized Exchange (DEX).
-* **Visibility:** While the "crypto" nature is hidden during everyday use, users have a dedicated "Transaction Details" view where they can see the exact network fee breakdown and on-chain hash for transparency.
+### 3.3. Peer-to-Peer (P2P) Transfers
+* **Send to Pocketlet Users:** Users can send USDC or XLM to other Pocketlet users by username or phone number. The app resolves the recipient internally.
+* **Send to Non-Users:** If the recipient is not a Pocketlet user, the sender can paste a raw Stellar address.
+* **Confirmation:** All sends require PIN confirmation.
 
-### 3.4. Fiat Off-Ramp & Merchant Payments (QR Ph Integration)
-* **The "Killer Feature":** Direct integration with **QR Ph**, the Philippine national QR code standard.
-* **Flow:** 
-    1. User scans a merchant's QR Ph code using the web app's camera interface.
-    2. The app parses the EMV standard QR code to get the merchant's receiving details and amount.
-    3. The app routes the payment through a Stellar Anchor (like Coins.ph or a PSP integration like Xendit).
-    4. The Anchor deducts PHPC from the user's wallet and settles the exact PHP amount to the merchant's traditional bank account via InstaPay/PESONet.
+### 3.4. Crypto Swaps
+* **Supported Pair:** Users can swap between **USDC** and **XLM** utilizing Stellar's native Decentralized Exchange (DEX).
+* **Quote Display:** The app shows the expected output, price impact, and total fees before confirmation.
+* **Confirmation:** All swaps require PIN confirmation.
+
+### 3.5. Transaction Details
+* Users have a dedicated "Transaction Details" view where they can see the exact network fee breakdown, DEX swap details (if applicable), and on-chain hash for transparency.
 
 ---
 
-## 4. Technical Architecture (V1 Web App)
+## 4. Regulatory & Compliance (V1)
+* **Technology Interface:** Pocketlet V1 operates purely as a technology interface. It does not custody user funds in a regulated e-money capacity, does not perform KYC, and does not process fiat.
+* **User-Funded Wallets:** Users control their own Soroban smart wallets. The platform never holds pooled user funds.
+* **Fiat On/Off-Ramp Delegation:** All fiat on-ramp, off-ramp, KYC, and settlement will be handled by licensed Stellar Anchors or payment service providers in V2.
+* **Data Privacy:** User email and phone data is stored in accordance with the Philippine Data Privacy Act (PDPA). No government IDs are collected in V1.
+
+---
+
+## 5. Custody Model
+* **Default Model:** Abstracted custody via a Soroban smart wallet controlled by a WebAuthn/Passkey signer.
+* **One Wallet Per User:** Each user gets their own smart contract wallet deployment for isolation and simplicity.
+* **Recovery:** If a user loses their passkey, they can initiate recovery using their registered email. After a waiting period, they can register a new passkey. If both the passkey and email access are lost, the account is unrecoverable.
+* **Self-Custody:** Seed phrase export and full self-custody are deferred to V2.
+
+---
+
+## 6. Fee Structure
+* **User-Pays Model:** All transaction-related costs are baked into the transaction and paid by the user.
+* **Included Fees:**
+    * Stellar network fees for transfers and smart contract invocations.
+    * DEX swap spread and slippage for USDC ↔ XLM conversions.
+    * Any platform markup, if applicable, shown before confirmation.
+* **Fee Display:** Total estimated fees are shown on the confirmation screen before the user approves any payment or swap.
+* **Fiat Fees:** Anchor on-ramp and off-ramp fees will be added in V2 and displayed transparently.
+
+---
+
+## 7. Security & Recovery
+* **PIN Confirmation:** A PIN is required to confirm all payments and swaps.
+* **Passkey Authentication:** Login and sensitive actions are secured via device-bound or synced passkeys.
+* **Email Verification:** Email verification is required for account creation and passkey recovery.
+* **Lost Passkey Recovery:** Email-based recovery with a waiting period and new passkey registration.
+* **Unrecoverable State:** If a user loses both their passkey and email access, the account cannot be recovered.
+* **Privacy:** Users can only view their own transaction history and balances.
+
+---
+
+## 8. Technical Architecture (V1 Web App)
 
 ### Frontend
-* **Framework:** React or Next.js (optimized as a Progressive Web App for mobile browser use).
-* **State Management:** Zustand or Context API.
-* **Wallet Connection:** Stellar Freighter (for self-custody testing) or a custom Soroban SDK implementation for abstracted accounts.
+* **Framework:** Next.js 14+ with App Router, optimized as a Progressive Web App (PWA) for mobile browsers.
+* **Language:** TypeScript only. No `any` or `@ts-ignore`.
+* **Styling:** Tailwind CSS.
+* **State Management:** Zustand for global state; local UI state in hooks or props.
 
 ### Blockchain Layer (Stellar / Soroban)
-* **Network:** Stellar Mainnet (via Horizon and Soroban RPC).
-* **Assets:** 
-    * `USDC` (Issued by Centre)
-    * `PHPC` (Issued by Coins.ph)
-    * `XLM` (For fees/swaps)
+* **Network:** Stellar Testnet for V1.
+* **Assets:**
+    * `USDC` (Issued by Circle)
+    * `XLM` (Native asset, for fees and swaps)
 * **Smart Contracts (Soroban):**
-    * *Account Abstraction Contract:* To handle email-based logins and fee sponsorship.
+    * *Smart Wallet Contract:* Passkey-controlled wallet supporting transfers and DEX swaps.
 
 ### Integration Standards (SEPs)
-* **SEP-10 (Authentication):** For secure wallet login.
-* **SEP-24 (Hosted Deposit/Withdrawal):** For the on-ramp and off-ramp flow with local Anchors.
-* **SEP-38 (Quotes):** To get the best exchange rate if a user pays a PHP QR code using USDC balance.
+* **SEP-2 (Federation):** Evaluated for P2P addressing. V1 uses an internal username/phone mapping. SEP-2 may be adopted in a future version if the user base grows and public addressing is needed.
 
 ### External APIs
-* **QR Ph Parsing:** A library to decode the EMV standard payload of a scanned QR Ph code.
-* **Anchor API:** (e.g., Coins.ph API) to route the final fiat settlement to the merchant.
+* **Horizon:** For account state, transaction history, and payment submissions.
+* **Soroban RPC:** For smart contract simulation and submission.
 
 ---
 
-## 5. User Journey Flow (Paying a Coffee Shop via QR Ph)
+## 9. User Journey Flow (Receiving a Freelance Payment in USDC)
 
-1. User opens the Web App and clicks "Scan to Pay".
-2. User scans the coffee shop's Maya/GCash QR Ph standee.
-3. App decodes the QR, displaying "Pay 150 PHP to CoffeeWorks".
-4. User has 10 USDC in their wallet. App uses SEP-38 to quote the conversion (e.g., 10 USDC = 570 PHP).
-5. User confirms. The app atomically:
-    * Swaps ~2.63 USDC for 150 PHPC on the DEX.
-    * Sends 150 PHPC to the off-ramp Anchor.
-    * The Anchor sends 150 real PHP via InstaPay to CoffeeWorks' Maya account.
-6. User sees "Payment Successful".
+1. User opens the Web App and signs up with email and passkey.
+2. A Soroban smart wallet is deployed on their behalf.
+3. The user shares their Stellar address or QR code with a client abroad.
+4. The client sends USDC to the user's wallet address.
+5. The user sees "Received 100 USDC" in their activity feed.
+6. The user taps the transaction to see the on-chain hash and network fee details.
+
+---
+
+## 10. Future Versions
+
+Detailed roadmap for V2 and beyond is documented in [`FUTURE_VERSIONS.md`](./FUTURE_VERSIONS.md).
+
+High-level deferred features include:
+* PHP stablecoin (PHPC) support
+* Fiat on-ramp via licensed Stellar Anchor
+* QR Ph merchant scan-and-pay off-ramp
+* Self-custody seed export
+* SEP-2 federation server
+* Mainnet deployment
+* Tagalog localization
+
+---
+
+## 11. Open Questions / Notes
+* V1 remains on Stellar Testnet. Mainnet readiness and deployment budget will be planned before V2.
+* The exact waiting period for passkey recovery will be defined during implementation (recommended: 24-72 hours).
+* Passkey credential behavior (device-bound vs. synced via Apple/Google) depends on the user's device and platform.
