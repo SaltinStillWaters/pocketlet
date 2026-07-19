@@ -8,7 +8,7 @@ import {
   xdr,
 } from '@stellar/stellar-sdk';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const RPC_URL =
@@ -30,6 +30,36 @@ const WASM_PATH = join(
   'pocketlet_wallet.wasm'
 );
 
+function getDataDir(): string {
+  return process.env.POCKETLET_DATA_DIR ?? join(process.cwd(), '.data');
+}
+
+function loadOrCreateDeployerSecret(): string {
+  const fromEnv = process.env.PLATFORM_SECRET_KEY;
+  if (fromEnv) {
+    return fromEnv;
+  }
+
+  const dataDir = getDataDir();
+  if (!existsSync(dataDir)) {
+    mkdirSync(dataDir, { recursive: true });
+  }
+
+  const secretFile = join(dataDir, 'platform_secret');
+  if (existsSync(secretFile)) {
+    return readFileSync(secretFile, 'utf-8').trim();
+  }
+
+  const kp = Keypair.random();
+  const secret = kp.secret();
+  writeFileSync(secretFile, secret, { mode: 0o600 });
+  console.warn(
+    'PLATFORM_SECRET_KEY is not set. A persistent deployer keypair has been generated for testnet and saved to:'
+  );
+  console.warn(secretFile);
+  return secret;
+}
+
 /**
  * Returns the platform deployer keypair.
  *
@@ -38,21 +68,15 @@ const WASM_PATH = join(
  * also stored as the wallet's `recovery_admin`, allowing the platform to
  * rotate a lost owner public key after email verification.
  *
- * In production, `PLATFORM_SECRET_KEY` must be set to a funded, persistent
- * account. In testnet mode, if it is missing, a random keypair is generated
- * and funded automatically so the app works out of the box.
+ * Order of precedence:
+ *   1. `PLATFORM_SECRET_KEY` environment variable
+ *   2. `apps/web/.data/platform_secret` (auto-generated once in testnet)
+ *
+ * In production, always set `PLATFORM_SECRET_KEY` via a secrets manager.
  */
 export function getPlatformKeypair(): Keypair {
-  const secret = process.env.PLATFORM_SECRET_KEY;
-  if (secret) {
-    return Keypair.fromSecret(secret);
-  }
-  const kp = Keypair.random();
-  console.warn(
-    'PLATFORM_SECRET_KEY is not set. A new deployer keypair has been generated for testnet only.'
-  );
-  console.warn('Save this secret:', kp.secret());
-  return kp;
+  const secret = loadOrCreateDeployerSecret();
+  return Keypair.fromSecret(secret);
 }
 
 export async function fundAccount(publicKey: string): Promise<void> {
