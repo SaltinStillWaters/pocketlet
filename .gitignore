@@ -15,6 +15,9 @@ target/
 .env.local
 .env.*.local
 
+# Runtime data
+apps/web/.data/
+
 # Logs
 *.log
 npm-debug.log*

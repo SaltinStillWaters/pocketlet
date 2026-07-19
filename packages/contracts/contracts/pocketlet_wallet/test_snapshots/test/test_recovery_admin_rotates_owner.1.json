@@ -16,7 +16,7 @@
               "function_name": "rotate_owner",
               "args": [
                 {
-                  "bytes": "bf94c759a3b06484fca5b915adbf560643499b652161fb7764299189166c9567"
+                  "bytes": "954258a9b8c3846e46a1881175a907a9e2d1cc0544e0d8e37465796ddbae5d33"
                 }
               ]
             }
@@ -81,7 +81,7 @@
                         ]
                       },
                       "val": {
-                        "bytes": "bf94c759a3b06484fca5b915adbf560643499b652161fb7764299189166c9567"
+                        "bytes": "954258a9b8c3846e46a1881175a907a9e2d1cc0544e0d8e37465796ddbae5d33"
                       }
                     },
                     {
