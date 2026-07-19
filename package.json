@@ -1,0 +1,20 @@
+{
+  "name": "pocketlet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pocketlet — abstracted USDC/XLM wallet on Stellar",
+  "packageManager": "pnpm@11.13.1",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "build:web": "pnpm --filter web build",
+    "start:web": "pnpm --filter web start",
+    "test:contracts": "pnpm --filter contracts test",
+    "build:contracts": "pnpm --filter contracts build",
+    "lint": "pnpm --filter web lint",
+    "typecheck": "pnpm --filter web typecheck"
+  },
+  "devDependencies": {
+    "@pocketlet/config": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}
