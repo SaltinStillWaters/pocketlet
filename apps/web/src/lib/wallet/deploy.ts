@@ -1,6 +1,5 @@
 import {
   Address,
-  Asset,
   Keypair,
   Networks,
   Operation,
@@ -31,6 +30,18 @@ const WASM_PATH = join(
   'pocketlet_wallet.wasm'
 );
 
+/**
+ * Returns the platform deployer keypair.
+ *
+ * The deployer account pays the Stellar network fees and rent to upload the
+ * wallet WASM and create each user's smart-wallet contract instance. It is
+ * also stored as the wallet's `recovery_admin`, allowing the platform to
+ * rotate a lost owner public key after email verification.
+ *
+ * In production, `PLATFORM_SECRET_KEY` must be set to a funded, persistent
+ * account. In testnet mode, if it is missing, a random keypair is generated
+ * and funded automatically so the app works out of the box.
+ */
 export function getPlatformKeypair(): Keypair {
   const secret = process.env.PLATFORM_SECRET_KEY;
   if (secret) {
@@ -149,6 +160,3 @@ export async function deployWallet(
   return contractAddress;
 }
 
-export function getXlmContractId(): string {
-  return Asset.native().contractId(NETWORK_PASSPHRASE);
-}

@@ -95,3 +95,29 @@ V1 is intentionally narrow so the team can:
 4. Build a clean contract and SDK foundation that makes V2 integrations (Anchor, QR Ph, PHPC) easier to add.
 
 For each deferred feature, this document will be updated with implementation notes as planning for V2 begins.
+
+---
+
+## V1 Testnet Shortcuts & Production Gaps
+
+These are intentional simplifications in the current V1 testnet implementation that must be hardened before mainnet or a production launch.
+
+### Email verification
+- **Current behavior:** The signup API returns the verification code in the JSON response so testing works without a mail server.
+- **Future work:** Integrate a transactional email provider (e.g., Resend, SendGrid, AWS SES) and remove the code from the API response.
+
+### Platform deployer key
+- **Current behavior:** If `PLATFORM_SECRET_KEY` is not set, the server generates a random testnet keypair and funds it automatically on startup.
+- **Why it exists:** The deployer pays for smart-wallet WASM upload and contract deployment and acts as the `recovery_admin` for lost-passkey recovery.
+- **Future work:** Require a fixed, funded, persistent deployer account in production and store its secret in a secrets manager.
+
+### DEX swap integration
+- **Current behavior:** The smart wallet accepts a DEX contract address and calls `swap(...)`. The unit tests use a tiny `mock_dex` contract.
+- **Future work:** Replace the mock with a real Stellar DEX path-payment contract or AMM pool and add slippage/quote handling in the frontend.
+
+### Remaining V1 issues
+- PIN confirmation for payments and swaps (issue #13)
+- Lost passkey recovery UI and waiting-period enforcement (issue #14)
+- P2P transfers by username, phone, or raw address (issue #10)
+- Transaction history and on-chain details view (issue #12)
+- End-to-end testnet testing and documentation (issue #15)

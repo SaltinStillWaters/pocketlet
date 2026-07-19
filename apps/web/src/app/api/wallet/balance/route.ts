@@ -6,13 +6,11 @@ import { getUserByEmail } from '@/lib/auth/store';
 import {
   fundAccount,
   getPlatformKeypair,
-  getXlmContractId,
   RPC_URL,
   NETWORK_PASSPHRASE,
 } from '@/lib/wallet/deploy';
+import { getXlmContractId, getUsdcContractId } from '@/lib/wallet/assets';
 import { Contract, Address, rpc, TransactionBuilder } from '@stellar/stellar-sdk';
-
-const USDC_CONTRACT_ID = process.env.NEXT_PUBLIC_USDC_CONTRACT_ID;
 
 function i128ToString(value: { hi: () => { toBigInt: () => bigint }; lo: () => { toBigInt: () => bigint } }): string {
   const hi = value.hi().toBigInt();
@@ -68,9 +66,7 @@ export async function GET() {
   const server = new rpc.Server(RPC_URL);
   try {
     const xlmBalance = await readContractBalance(server, getXlmContractId(), user.contractId);
-    const usdcBalance = USDC_CONTRACT_ID
-      ? await readContractBalance(server, USDC_CONTRACT_ID, user.contractId)
-      : '0';
+    const usdcBalance = await readContractBalance(server, getUsdcContractId(), user.contractId);
 
     return NextResponse.json({
       xlm: xlmBalance,
