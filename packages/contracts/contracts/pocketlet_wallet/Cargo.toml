@@ -13,3 +13,7 @@ soroban-sdk = { workspace = true }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+ed25519-dalek = { version = "2.2.0", default-features = false, features = ["alloc", "rand_core"] }
+rand = { version = "0.8.5", default-features = false, features = ["std_rng"] }
+mock_token = { path = "../mock_token" }
+mock_dex = { path = "../mock_dex" }

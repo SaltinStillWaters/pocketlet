@@ -1,10 +1,11 @@
 {
   "generators": {
-    "address": 1,
+    "address": 2,
     "nonce": 0,
     "mux_id": 0
   },
   "auth": [
+    [],
     [],
     []
   ],
@@ -24,7 +25,7 @@
           "data": {
             "contract_data": {
               "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
               "key": "ledger_key_contract_instance",
               "durability": "persistent",
               "val": {
@@ -32,7 +33,32 @@
                   "executable": {
                     "wasm": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                   },
-                  "storage": null
+                  "storage": [
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Owner"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "bytes": "56280e2f747cec33d2f3073dc0eac3a732852275e28e31bdb807e9dd8a81251a"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "RecoveryAdmin"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
+                      }
+                    }
+                  ]
                 }
               }
             }
