@@ -82,6 +82,17 @@ export default function SignupPage() {
         setError(verifyData.error ?? 'Failed to verify passkey');
         return;
       }
+
+      const deployRes = await fetch('/api/wallet/deploy', { method: 'POST' });
+      const deployData = (await deployRes.json()) as {
+        error?: string;
+        contractId?: string;
+        stellarAddress?: string;
+      };
+      if (!deployRes.ok) {
+        setError(deployData.error ?? 'Wallet deployment failed');
+        return;
+      }
       window.location.href = '/home';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Passkey registration failed');

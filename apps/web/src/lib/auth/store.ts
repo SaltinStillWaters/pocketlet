@@ -15,6 +15,9 @@ export interface User {
   verificationCode?: string;
   pendingChallenge?: string;
   credential?: Credential;
+  contractId?: string;
+  ownerSecretKey?: string;
+  stellarAddress?: string;
   createdAt: string;
 }
 
@@ -107,6 +110,26 @@ export function setCredential(email: string, credential: Credential): User {
   }
   user.credential = credential;
   delete user.pendingChallenge;
+  saveUsers(users);
+  return user;
+}
+
+export interface WalletInfo {
+  contractId: string;
+  ownerSecretKey: string;
+  stellarAddress: string;
+}
+
+export function setWallet(email: string, wallet: WalletInfo): User {
+  const users = loadUsers();
+  const normalized = normalizeEmail(email);
+  const user = users[normalized];
+  if (!user) {
+    throw new Error('User not found');
+  }
+  user.contractId = wallet.contractId;
+  user.ownerSecretKey = wallet.ownerSecretKey;
+  user.stellarAddress = wallet.stellarAddress;
   saveUsers(users);
   return user;
 }
