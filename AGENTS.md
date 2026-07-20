@@ -1,12 +1,12 @@
 # Agent Instructions
 
-Read this file, `SPEC.md`, and `FUTURE_VERSIONS.md` before any planning or coding. The repo currently contains the product spec and roadmap; the monorepo structure described below is the planned/target layout and may not be scaffolded yet.
+Read this file, `SPEC.md`, `FUTURE_VERSIONS.md`, `README.md`, and `TESTNET.md` before any planning or coding. The monorepo structure is scaffolded and the project is in active V1 development.
 
 ## Primary Directives
 
 - **Read `SPEC.md` and `FUTURE_VERSIONS.md` first.** V1 is scoped to testnet, abstracted passkey custody, USDC/XLM only, and P2P + DEX swaps. Defer all fiat/Anchor/QR Ph features to V2.
 - **Package manager is `pnpm`.** Do not use `npm`, `yarn`, or `bun`. Use `pnpm install` and `pnpm run <script>`.
-- **Verify before assuming structure.** If `pnpm-workspace.yaml`, `apps/`, or `packages/` are missing, scaffold or inspect the repo before applying commands from this file.
+- **Verify before assuming structure.** The monorepo (`pnpm-workspace.yaml`, `apps/`, and `packages/`) is present. If a file conflicts with these instructions, trust the executable source and update this file.
 
 ## Planned Monorepo Layout
 
@@ -33,10 +33,10 @@ Use `pnpm --filter <workspace-name>` to target packages. For example, add a depe
 
 ## Execution Workflow
 
-1. Read `SPEC.md`, `FUTURE_VERSIONS.md`, and this file.
+1. Read `SPEC.md`, `FUTURE_VERSIONS.md`, `README.md`, `TESTNET.md`, and this file.
 2. State a brief plan before writing large code blocks.
 3. Use `pnpm --filter <workspace>` for package-specific installs and scripts.
-4. Add tests for critical logic: `cargo test` for Rust, Jest/whatever the project has configured for TypeScript.
+4. Add tests for critical logic: `cargo test` for Rust, `vitest` for TypeScript.
 5. Verify by running the package's lint, typecheck, and test commands in the intended order.
 
 ## Trust
