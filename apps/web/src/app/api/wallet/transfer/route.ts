@@ -5,6 +5,7 @@ import { SESSION_COOKIE_NAME } from '@/lib/auth/config';
 import { getUserByEmail, verifyPinForUser } from '@/lib/auth/store';
 import { getUsdcContractId, getXlmContractId } from '@/lib/wallet/assets';
 import { invokeWalletContract, amountToBaseUnits, i128ScVal, addressScVal } from '@/lib/wallet/invoke';
+import { getTokenBalance } from '@/lib/wallet/deploy';
 import { resolveRecipient } from '@/lib/wallet/recipient';
 
 export interface TransferRequest {
@@ -90,6 +91,14 @@ export async function POST(request: NextRequest) {
   try {
     const tokenContractId = getTokenContractId(asset);
     const baseAmount = amountToBaseUnits(amount);
+
+    const balance = await getTokenBalance(tokenContractId, user.contractId);
+    if (baseAmount > balance) {
+      return NextResponse.json(
+        { error: `Insufficient ${asset} balance` },
+        { status: 400 }
+      );
+    }
 
     const result = await invokeWalletContract(user, 'transfer', [
       addressScVal(tokenContractId),

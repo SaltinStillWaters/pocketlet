@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
     authenticatorSelection: {
       residentKey: 'preferred',
       userVerification: 'preferred',
-      authenticatorAttachment: 'platform',
     },
   });
 
