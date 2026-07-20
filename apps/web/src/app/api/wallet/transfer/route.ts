@@ -4,8 +4,9 @@ import { verifySessionToken } from '@/lib/auth/session';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/config';
 import { getUserByEmail, verifyPinForUser } from '@/lib/auth/store';
 import { getUsdcContractId, getXlmContractId } from '@/lib/wallet/assets';
-import { Address } from '@stellar/stellar-sdk';
 import { invokeWalletContract, amountToBaseUnits, i128ScVal, addressScVal } from '@/lib/wallet/invoke';
+import { getTokenBalance } from '@/lib/wallet/deploy';
+import { resolveRecipient } from '@/lib/wallet/recipient';
 
 export interface TransferRequest {
   asset: 'USDC' | 'XLM';
@@ -16,15 +17,6 @@ export interface TransferRequest {
 
 function getTokenContractId(asset: 'USDC' | 'XLM'): string {
   return asset === 'USDC' ? getUsdcContractId() : getXlmContractId();
-}
-
-function validateRecipient(recipient: string): string | null {
-  try {
-    Address.fromString(recipient);
-    return null;
-  } catch {
-    return 'Invalid Stellar address';
-  }
 }
 
 function validateAmount(amount: string): string | null {
@@ -76,9 +68,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: amountError }, { status: 400 });
   }
 
-  const recipientError = validateRecipient(recipient);
-  if (recipientError) {
-    return NextResponse.json({ error: recipientError }, { status: 400 });
+  if (!recipient || typeof recipient !== 'string') {
+    return NextResponse.json({ error: 'Recipient is required' }, { status: 400 });
+  }
+
+  const resolved = resolveRecipient(recipient);
+  if (!resolved) {
+    return NextResponse.json(
+      { error: 'Recipient not found. Check the username, phone, or Stellar address.' },
+      { status: 404 }
+    );
   }
 
   if (!pin || typeof pin !== 'string') {
@@ -93,9 +92,17 @@ export async function POST(request: NextRequest) {
     const tokenContractId = getTokenContractId(asset);
     const baseAmount = amountToBaseUnits(amount);
 
+    const balance = await getTokenBalance(tokenContractId, user.contractId);
+    if (baseAmount > balance) {
+      return NextResponse.json(
+        { error: `Insufficient ${asset} balance` },
+        { status: 400 }
+      );
+    }
+
     const result = await invokeWalletContract(user, 'transfer', [
       addressScVal(tokenContractId),
-      addressScVal(recipient),
+      addressScVal(resolved.address),
       i128ScVal(baseAmount),
     ]);
 

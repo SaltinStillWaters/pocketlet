@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Address } from '@stellar/stellar-sdk';
 import PinModal from '@/components/PinModal';
 
 interface TransferForm {
@@ -15,6 +14,12 @@ interface TransferResult {
   hash: string;
 }
 
+interface ResolvedRecipient {
+  type: 'address' | 'username' | 'phone';
+  address: string;
+  display: string;
+}
+
 export default function SendPage() {
   const [form, setForm] = useState<TransferForm>({
     asset: 'USDC',
@@ -25,15 +30,12 @@ export default function SendPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TransferResult | null>(null);
   const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [resolved, setResolved] = useState<ResolvedRecipient | null>(null);
+  const [resolving, setResolving] = useState(false);
 
   const validateForm = (): string | null => {
     if (!form.recipient.trim()) {
-      return 'Recipient address is required';
-    }
-    try {
-      Address.fromString(form.recipient.trim());
-    } catch {
-      return 'Invalid Stellar address';
+      return 'Recipient is required';
     }
     if (!form.amount || Number.isNaN(Number(form.amount)) || Number(form.amount) <= 0) {
       return 'Enter a valid amount greater than zero';
@@ -45,7 +47,7 @@ export default function SendPage() {
     return null;
   };
 
-  const submitForm = (e: React.FormEvent) => {
+  const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     const validationError = validateForm();
@@ -53,7 +55,29 @@ export default function SendPage() {
       setError(validationError);
       return;
     }
-    setStep('review');
+
+    setResolving(true);
+    try {
+      const res = await fetch('/api/wallet/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient: form.recipient.trim() }),
+      });
+
+      const body = (await res.json()) as { error?: string } & Partial<ResolvedRecipient>;
+      if (!res.ok) {
+        setError(body.error ?? 'Recipient not found');
+        setResolving(false);
+        return;
+      }
+
+      setResolved(body as ResolvedRecipient);
+      setStep('review');
+    } catch {
+      setError('Failed to resolve recipient');
+    } finally {
+      setResolving(false);
+    }
   };
 
   const confirmTransfer = () => {
@@ -194,30 +218,31 @@ export default function SendPage() {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Recipient address
+                  Recipient
                 </label>
                 <input
                   type="text"
                   value={form.recipient}
                   onChange={(e) => setForm((f) => ({ ...f, recipient: e.target.value.trim() }))}
-                  placeholder="G... or C..."
+                  placeholder="@username, +639..., or G.../C..."
                   className="w-full rounded-lg border border-gray-300 px-4 py-3 font-mono text-sm focus:border-pocketlet-500 focus:outline-none focus:ring-2 focus:ring-pocketlet-100"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Enter any Stellar account (G...) or contract (C...) address.
+                  Enter a Pocketlet username, phone number, or Stellar address.
                 </p>
               </div>
 
               <button
                 type="submit"
-                className="w-full rounded-lg bg-pocketlet-600 py-3 font-semibold text-white hover:bg-pocketlet-700"
+                disabled={resolving}
+                className="w-full rounded-lg bg-pocketlet-600 py-3 font-semibold text-white hover:bg-pocketlet-700 disabled:opacity-50"
               >
-                Review
+                {resolving ? 'Resolving...' : 'Review'}
               </button>
             </form>
           )}
 
-          {step === 'review' && (
+          {step === 'review' && resolved && (
             <div className="space-y-4">
               <div className="rounded-lg bg-gray-50 p-4">
                 <div className="mb-3 flex justify-between">
@@ -228,8 +253,11 @@ export default function SendPage() {
                 </div>
                 <div className="mb-3 flex justify-between">
                   <span className="text-sm text-gray-500">To</span>
-                  <span className="max-w-[60%] break-all text-right font-mono text-xs text-gray-900">
-                    {form.recipient}
+                  <span className="max-w-[60%] break-all text-right text-sm text-gray-900">
+                    {resolved.type !== 'address' && (
+                      <span className="block font-medium">{resolved.display}</span>
+                    )}
+                    <span className="block font-mono text-xs text-gray-600">{resolved.address}</span>
                   </span>
                 </div>
                 <div className="flex justify-between">
