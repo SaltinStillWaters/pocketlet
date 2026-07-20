@@ -68,6 +68,19 @@ function makeInvokeOp(
   } as unknown as Horizon.ServerApi.InvokeHostFunctionOperationRecord;
 }
 
+function makeBalanceChange(
+  overrides: Partial<Horizon.HorizonApi.BalanceChange> = {}
+): Horizon.HorizonApi.BalanceChange {
+  return {
+    asset_type: 'native',
+    type: 'transfer',
+    from: WALLET_ADDRESS,
+    to: OTHER_ADDRESS,
+    amount: '150000000',
+    ...overrides,
+  };
+}
+
 describe('transaction parser', () => {
   it('classifies a received payment', () => {
     const op = makePaymentOp({ from: OTHER_ADDRESS, to: WALLET_ADDRESS });
@@ -137,6 +150,24 @@ describe('transaction parser', () => {
     expect(formatTransactionDescription({ ...makePaymentOp(), type: 'receive', amount: '10', asset: 'XLM' } as never)).toBe('Received 10 XLM');
     expect(formatTransactionDescription({ ...makePaymentOp(), type: 'send', amount: '5', asset: 'USDC' } as never)).toBe('Sent 5 USDC');
     expect(formatTransactionDescription({ ...makeInvokeOp(), type: 'swap', amount: '1', asset: 'USDC', sellAmount: '1', sellAsset: 'USDC', buyAmount: '10', buyAsset: 'XLM' } as never)).toBe('Swapped 1 USDC for 10 XLM');
+  });
+
+  it('classifies a transfer invoke operation with balance changes', () => {
+    const op = makeInvokeOp({
+      function: 'transfer',
+      asset_balance_changes: [
+        makeBalanceChange({
+          asset_type: 'credit_alphanum4',
+          asset_code: 'USDC',
+          amount: '25000000',
+        }),
+      ],
+    });
+    const tx = classifyOperation(op, WALLET_ADDRESS, USDC_CONTRACT_ID);
+    expect(tx?.type).toBe('send');
+    expect(tx?.asset).toBe('USDC');
+    expect(tx?.amount).toBe('2.5');
+    expect(tx?.recipient).toBe(OTHER_ADDRESS);
   });
 
   it('builds Stellar Expert explorer URL', () => {

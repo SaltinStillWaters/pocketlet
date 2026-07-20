@@ -130,7 +130,7 @@ export async function ensureWasmUploaded(server: rpc.Server, deployer: Keypair):
   return Buffer.from(returnedHash);
 }
 
-async function pollTransaction(
+export async function pollTransaction(
   server: rpc.Server,
   hash: string,
   attempts = 20

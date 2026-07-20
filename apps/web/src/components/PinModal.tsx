@@ -5,7 +5,7 @@ import { useState } from 'react';
 interface PinModalProps {
   isOpen: boolean;
   title?: string;
-  onConfirm: () => void;
+  onConfirm: (pin: string) => void;
   onCancel: () => void;
 }
 
@@ -44,7 +44,7 @@ export default function PinModal({
         return;
       }
       setPin('');
-      onConfirm();
+      onConfirm(pin);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'PIN verification failed');
     } finally {

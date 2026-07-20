@@ -114,13 +114,12 @@ export default function HomePage() {
             >
               Receive
             </Link>
-            <button
-              disabled
-              className="rounded-lg bg-gray-100 py-3 font-semibold text-gray-400"
-              title="Send and swap coming in the next issues"
+            <Link
+              href="/send"
+              className="rounded-lg bg-pocketlet-100 py-3 text-center font-semibold text-pocketlet-700 hover:bg-pocketlet-200"
             >
               Send
-            </button>
+            </Link>
           </div>
         </div>
 

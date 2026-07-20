@@ -115,6 +115,18 @@ function parsePathPaymentOperation(
   };
 }
 
+function describeAssetFromBalanceChange(
+  change: Horizon.HorizonApi.BalanceChange
+): string {
+  if (change.asset_type === 'native') {
+    return XLM_ASSET;
+  }
+  if (change.asset_code === 'USDC') {
+    return USDC_ASSET;
+  }
+  return change.asset_code ?? `contract:${change.asset_type}`;
+}
+
 function parseInvokeHostFunctionOperation(
   op: Horizon.ServerApi.InvokeHostFunctionOperationRecord,
   walletAddress: string,
@@ -146,6 +158,12 @@ function parseInvokeHostFunctionOperation(
   }
 
   if (functionName === 'transfer') {
+    // Horizon reports SAC balance changes as classic asset entries. Find the
+    // outgoing change to determine the real asset and amount.
+    const outgoing = op.asset_balance_changes.find(
+      (change) => change.from === walletAddress && change.to !== walletAddress
+    );
+
     return {
       id: op.transaction_hash,
       hash: op.transaction_hash,
@@ -154,8 +172,11 @@ function parseInvokeHostFunctionOperation(
       createdAt: op.created_at,
       ledger: 0,
       fee: '0',
-      asset: describeAsset(contract, usdcContractId),
-      amount: '0',
+      asset: outgoing
+        ? describeAssetFromBalanceChange(outgoing)
+        : describeAsset(contract, usdcContractId),
+      amount: outgoing ? formatAmountFromStroops(outgoing.amount) : '0',
+      recipient: outgoing?.to,
     };
   }
 
