@@ -1,0 +1,264 @@
+import { Horizon } from '@stellar/stellar-sdk';
+
+export const HORIZON_EXPLORER_URL = 'https://stellar.expert/explorer/testnet/tx';
+
+export type TransactionType = 'receive' | 'send' | 'swap' | 'unknown';
+
+export interface WalletTransaction {
+  id: string;
+  hash: string;
+  type: TransactionType;
+  status: 'success' | 'failed';
+  createdAt: string;
+  ledger: number;
+  fee: string;
+  asset: string;
+  amount: string;
+  recipient?: string;
+  sender?: string;
+  sellAsset?: string;
+  sellAmount?: string;
+  buyAsset?: string;
+  buyAmount?: string;
+  memo?: string;
+}
+
+export interface TransactionDetails extends WalletTransaction {
+  operationCount: number;
+  sourceAccount: string;
+}
+
+const XLM_ASSET = 'XLM';
+const USDC_ASSET = 'USDC';
+
+function describeAsset(contractId: string | undefined, usdcContractId: string): string {
+  if (!contractId) {
+    return XLM_ASSET;
+  }
+  if (contractId === usdcContractId) {
+    return USDC_ASSET;
+  }
+  return `contract:${contractId.slice(0, 8)}...`;
+}
+
+function formatAmountFromStroops(amount: string | undefined): string {
+  if (!amount) {
+    return '0';
+  }
+  const value = BigInt(amount);
+  const integer = value / 10_000_000n;
+  const fraction = value % 10_000_000n;
+  if (fraction === 0n) {
+    return integer.toString();
+  }
+  const fractionStr = fraction.toString().padStart(7, '0').replace(/0+$/, '');
+  return `${integer}.${fractionStr}`;
+}
+
+function parsePaymentOperation(
+  op: Horizon.ServerApi.PaymentOperationRecord,
+  walletAddress: string
+): WalletTransaction | null {
+  const isReceive = op.to === walletAddress;
+  const isSend = op.from === walletAddress;
+  if (!isReceive && !isSend) {
+    return null;
+  }
+
+  const assetCode = typeof op.asset_code === 'string' ? op.asset_code : XLM_ASSET;
+  const amount = formatAmountFromStroops(op.amount);
+
+  return {
+    id: op.transaction_hash,
+    hash: op.transaction_hash,
+    type: isReceive ? 'receive' : 'send',
+    status: op.transaction_successful ? 'success' : 'failed',
+    createdAt: op.created_at,
+    ledger: 0,
+    fee: '0',
+    asset: assetCode,
+    amount,
+    recipient: isReceive ? undefined : op.to,
+    sender: isReceive ? op.from : undefined,
+  };
+}
+
+function parsePathPaymentOperation(
+  op: Horizon.ServerApi.PathPaymentOperationRecord,
+  walletAddress: string
+): WalletTransaction | null {
+  const isReceive = op.to === walletAddress;
+  const isSend = op.from === walletAddress;
+  if (!isReceive && !isSend) {
+    return null;
+  }
+
+  const sourceAsset = op.source_asset_code ?? XLM_ASSET;
+  const destAsset = op.asset_code ?? XLM_ASSET;
+
+  return {
+    id: op.transaction_hash,
+    hash: op.transaction_hash,
+    type: isSend && sourceAsset !== destAsset ? 'swap' : isReceive ? 'receive' : 'send',
+    status: op.transaction_successful ? 'success' : 'failed',
+    createdAt: op.created_at,
+    ledger: 0,
+    fee: '0',
+    asset: destAsset,
+    amount: formatAmountFromStroops(op.amount),
+    recipient: isReceive ? undefined : op.to,
+    sender: isReceive ? op.from : undefined,
+    sellAsset: isSend ? sourceAsset : undefined,
+    sellAmount: isSend ? formatAmountFromStroops(op.source_amount) : undefined,
+    buyAsset: isSend ? destAsset : undefined,
+    buyAmount: isSend ? formatAmountFromStroops(op.amount) : undefined,
+  };
+}
+
+function parseInvokeHostFunctionOperation(
+  op: Horizon.ServerApi.InvokeHostFunctionOperationRecord,
+  walletAddress: string,
+  usdcContractId: string
+): WalletTransaction | null {
+  if (op.source_account !== walletAddress) {
+    return null;
+  }
+
+  // Heuristic: look at the invoked function name and the invoked contract to
+  // classify the operation. This is intentionally simple for the V1 testnet.
+  const functionName = op.function;
+  const contract = op.address;
+
+  if (functionName === 'swap') {
+    return {
+      id: op.transaction_hash,
+      hash: op.transaction_hash,
+      type: 'swap',
+      status: op.transaction_successful ? 'success' : 'failed',
+      createdAt: op.created_at,
+      ledger: 0,
+      fee: '0',
+      asset: USDC_ASSET,
+      amount: '0',
+      sellAsset: 'unknown',
+      buyAsset: 'unknown',
+    };
+  }
+
+  if (functionName === 'transfer') {
+    return {
+      id: op.transaction_hash,
+      hash: op.transaction_hash,
+      type: 'send',
+      status: op.transaction_successful ? 'success' : 'failed',
+      createdAt: op.created_at,
+      ledger: 0,
+      fee: '0',
+      asset: describeAsset(contract, usdcContractId),
+      amount: '0',
+    };
+  }
+
+  return null;
+}
+
+export function classifyOperation(
+  op: Horizon.ServerApi.OperationRecord,
+  walletAddress: string,
+  usdcContractId: string
+): WalletTransaction | null {
+  switch (op.type) {
+    case 'payment':
+      return parsePaymentOperation(
+        op as Horizon.ServerApi.PaymentOperationRecord,
+        walletAddress
+      );
+    case 'path_payment_strict_receive':
+    case 'path_payment_strict_send':
+      return parsePathPaymentOperation(
+        op as Horizon.ServerApi.PathPaymentOperationRecord,
+        walletAddress
+      );
+    case 'invoke_host_function':
+      return parseInvokeHostFunctionOperation(
+        op as Horizon.ServerApi.InvokeHostFunctionOperationRecord,
+        walletAddress,
+        usdcContractId
+      );
+    default:
+      return null;
+  }
+}
+
+export function buildTransactionDetails(
+  tx: Horizon.ServerApi.TransactionRecord,
+  ops: Horizon.ServerApi.OperationRecord[],
+  walletAddress: string,
+  usdcContractId: string
+): TransactionDetails {
+  const status = tx.successful ? 'success' : 'failed';
+  const fee = String(tx.fee_charged);
+  const memo = tx.memo_type !== 'none' ? tx.memo : undefined;
+
+  let primary: WalletTransaction | null = null;
+  for (const op of ops) {
+    const parsed = classifyOperation(op, walletAddress, usdcContractId);
+    if (parsed) {
+      primary = parsed;
+      break;
+    }
+  }
+
+  const type: TransactionType = primary?.type ?? 'unknown';
+
+  return {
+    id: tx.hash,
+    hash: tx.hash,
+    type,
+    status,
+    createdAt: tx.created_at,
+    ledger: tx.ledger_attr,
+    fee,
+    asset: primary?.asset ?? XLM_ASSET,
+    amount: primary?.amount ?? '0',
+    recipient: primary?.recipient,
+    sender: primary?.sender,
+    sellAsset: primary?.sellAsset,
+    sellAmount: primary?.sellAmount,
+    buyAsset: primary?.buyAsset,
+    buyAmount: primary?.buyAmount,
+    memo,
+    operationCount: ops.length,
+    sourceAccount: tx.source_account,
+  };
+}
+
+export function explorerUrl(hash: string): string {
+  return `${HORIZON_EXPLORER_URL}/${hash}`;
+}
+
+export function formatTransactionType(type: TransactionType): string {
+  switch (type) {
+    case 'receive':
+      return 'Received';
+    case 'send':
+      return 'Sent';
+    case 'swap':
+      return 'Swapped';
+    default:
+      return 'Transaction';
+  }
+}
+
+export function formatTransactionDescription(tx: WalletTransaction): string {
+  switch (tx.type) {
+    case 'receive':
+      return `Received ${tx.amount} ${tx.asset}`;
+    case 'send':
+      return `Sent ${tx.amount} ${tx.asset}`;
+    case 'swap':
+      return `Swapped ${tx.sellAmount ?? tx.amount} ${tx.sellAsset ?? tx.asset} for ${tx.buyAmount ?? '?'} ${tx.buyAsset ?? '?'}`;
+    default:
+      return 'Unknown transaction';
+  }
+}

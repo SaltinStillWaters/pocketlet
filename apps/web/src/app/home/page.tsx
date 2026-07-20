@@ -134,6 +134,17 @@ export default function HomePage() {
           </p>
         </div>
 
+        <Link
+          href="/transactions"
+          className="mt-6 block rounded-2xl bg-white p-6 shadow-lg transition hover:shadow-md"
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700">Activity</h2>
+            <span className="text-pocketlet-600">→</span>
+          </div>
+          <p className="mt-1 text-sm text-gray-500">View your transaction history and details.</p>
+        </Link>
+
         <div className="mt-6 rounded-2xl bg-white p-6 shadow-lg">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-700">Security</h2>
