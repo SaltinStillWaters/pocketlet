@@ -28,6 +28,18 @@ This is a pnpm monorepo:
 └── README.md                   This file
 ```
 
+## Deployed Contracts (Testnet)
+
+These are the contracts currently deployed on Stellar Testnet for this project:
+
+| Contract | Address | Notes |
+| --- | --- | --- |
+| Circle USDC SAC | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` | Official Circle testnet USDC Stellar Asset Contract |
+| Pocketlet Smart Wallet (example) | `CA7FMXWUMM3C37O4QF4E4R4KKXZIEBV7CTFHKDRDXPBLZQ2NMC5PZC5G` | One of the wallets deployed during testnet testing |
+| Pocketlet Smart Wallet (example) | `CCTTR6BVBPGWW76HFCRSPQAXZCOC4HKUF5BKK3ZDO7V7B6PIPDKP2BFQ` | Another wallet deployed during testnet testing |
+
+The DEX contract is auto-deployed from `mock_dex.wasm` on first swap when `DEX_CONTRACT_ID` is not set. The address is cached in `apps/web/.data/dex_contract_id`.
+
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) 20+ (LTS recommended)
@@ -147,6 +159,24 @@ pnpm run typecheck          # Run TypeScript type checking on the web app
 - User funds live in their own Soroban smart wallet.
 - The platform deployer key can rotate the wallet owner after email verification. In production, store `PLATFORM_SECRET_KEY` in a secrets manager.
 - Email verification returns the code in the API response for testnet convenience. Replace with a real transactional email provider before production.
+
+## Screenshots
+
+### Home / Balance
+
+![Home screen showing wallet balance](./screenshots/wallet-connected-balance.png)
+
+![Debug home view](./screenshots/debug-home.png)
+
+### Send Flow
+
+![Send review screen](./screenshots/debug-send-review.png)
+
+![Send PIN confirmation](./screenshots/debug-send-pin.png)
+
+![Send confirming](./screenshots/debug-send-confirming.png)
+
+![Send error state](./screenshots/debug-send-error.png)
 
 ## License
 
