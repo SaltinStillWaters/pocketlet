@@ -118,6 +118,6 @@ These are intentional simplifications in the current V1 testnet implementation t
 ### Remaining V1 issues
 - PIN confirmation for payments and swaps (issue #13)
 - Lost passkey recovery UI and waiting-period enforcement (issue #14)
-- P2P transfers by username, phone, or raw address (issue #10)
+- ~~P2P transfers by username, phone, or raw address (issue #10)~~ ✅ Completed
 - Transaction history and on-chain details view (issue #12)
 - End-to-end testnet testing and documentation (issue #15)

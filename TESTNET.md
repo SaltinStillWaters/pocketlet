@@ -65,17 +65,22 @@ RECOVERY_WAITING_PERIOD_MS=60000
 2. Enter a 6-digit PIN and confirm.
 3. Verify the security badge changes to **PIN set**.
 
-### 5. Send USDC/XLM to a Raw Stellar Address
+### 5. Send USDC/XLM to a Stellar Address
 
 1. From `/home`, click **Send**.
-2. Enter an external testnet address as the recipient (e.g., from another wallet or the Stellar Laboratory).
+2. Enter a recipient. You can use:
+   - A Pocketlet username, e.g. `@alice`
+   - A Pocketlet phone number, e.g. `+63 912 345 6789`
+   - Any external testnet Stellar address (e.g., from another wallet or the Stellar Laboratory).
 3. Enter an amount (e.g., `0.5`).
 4. Select the asset (USDC or XLM).
-5. Confirm with the PIN.
-6. Submit and wait for the transaction hash.
+5. Review the resolved Stellar address on the confirmation screen.
+6. Confirm with the PIN.
+7. Submit and wait for the transaction hash.
 
 **Expected:**
 
+- The recipient is resolved to a Stellar address before the transfer is submitted.
 - The wallet contract's `transfer` function is invoked.
 - The recipient's balance increases.
 - `/transactions` shows an outgoing `send` transaction.
@@ -84,8 +89,10 @@ RECOVERY_WAITING_PERIOD_MS=60000
 
 1. Create a second user by signing up with a different email in an incognito/private window (or another browser).
 2. Deploy the wallet for the second user.
-3. From the first user's `/send` page, enter the second user's email or phone number if the UI supports it; otherwise, paste the second user's Stellar address.
-4. Enter an amount and confirm with PIN.
+3. On the second user, go to **Profile** from `/home` and set a username (e.g., `alice`) and/or phone number (e.g., `+63 912 345 6789`).
+4. From the first user's `/send` page, enter the second user's `@username` or `+phone` number.
+5. Review the resolved Stellar address and enter an amount.
+6. Confirm with PIN.
 
 **Expected:** The transfer completes and the second user's balance increases.
 

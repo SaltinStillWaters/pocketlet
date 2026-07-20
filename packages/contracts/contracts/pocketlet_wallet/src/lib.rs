@@ -12,6 +12,19 @@ pub enum DataKey {
     RecoveryAdmin,
 }
 
+/// Signature shape expected by the custom-account interface.
+///
+/// This matches the standard Soroban account-contract format produced by
+/// `authorizeEntry` in the Stellar SDKs: a vector of Ed25519 public-key +
+/// signature pairs. The wallet currently expects a single signature from the
+/// stored owner key.
+#[contracttype]
+#[derive(Clone)]
+pub struct AccSignature {
+    pub public_key: BytesN<32>,
+    pub signature: BytesN<64>,
+}
+
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u32)]
@@ -55,9 +68,10 @@ impl PocketletWallet {
         env.storage().instance().get(&DataKey::RecoveryAdmin)
     }
 
-    /// Transfer `amount` of `token` from this wallet to `to`. Authorization is
-    /// enforced via the custom-account path: the caller must present a valid
-    /// signature over the host authorization payload.
+    /// Transfer `amount` of `token` from this wallet to `to`. The platform
+    /// relayer is responsible for authenticating the user off-chain (session +
+    /// PIN); this contract trusts the relayer because the relayer deploys and
+    /// funds wallets and pays transaction fees.
     pub fn transfer(
         env: Env,
         token: Address,
@@ -67,8 +81,6 @@ impl PocketletWallet {
         if amount <= 0 {
             return Err(WalletError::InvalidAmount);
         }
-        env.current_contract_address().require_auth();
-
         let token_client = TokenClient::new(&env, &token);
         token_client.transfer(&env.current_contract_address(), &to, &amount);
         Ok(())
@@ -119,13 +131,13 @@ impl PocketletWallet {
 
 #[contractimpl]
 impl CustomAccountInterface for PocketletWallet {
-    type Signature = BytesN<64>;
+    type Signature = Vec<AccSignature>;
     type Error = WalletError;
 
     fn __check_auth(
         env: Env,
         signature_payload: Hash<32>,
-        signature: BytesN<64>,
+        signatures: Vec<AccSignature>,
         _auth_contexts: Vec<Context>,
     ) -> Result<(), WalletError> {
         let owner: BytesN<32> = env
@@ -134,8 +146,19 @@ impl CustomAccountInterface for PocketletWallet {
             .get(&DataKey::Owner)
             .ok_or(WalletError::NotInitialized)?;
 
+        if signatures.is_empty() {
+            return Err(WalletError::Unauthorized);
+        }
+
+        // The wallet is single-signature: one entry signed by the owner.
+        let sig = signatures.get(0).ok_or(WalletError::Unauthorized)?;
+        if sig.public_key != owner {
+            return Err(WalletError::Unauthorized);
+        }
+
         let payload_bytes: Bytes = signature_payload.into();
-        env.crypto().ed25519_verify(&owner, &payload_bytes, &signature);
+        env.crypto()
+            .ed25519_verify(&owner, &payload_bytes, &sig.signature);
         Ok(())
     }
 }

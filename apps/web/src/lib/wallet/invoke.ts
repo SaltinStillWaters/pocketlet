@@ -5,9 +5,8 @@ import {
   TransactionBuilder,
   rpc,
   xdr,
-  hash,
-  buildAuthorizationEntryPreimage,
   nativeToScVal,
+  authorizeEntry,
 } from '@stellar/stellar-sdk';
 import { RPC_URL, NETWORK_PASSPHRASE, getPlatformKeypair, fundAccount, pollTransaction } from './deploy';
 import type { User } from '@/lib/auth/store';
@@ -101,38 +100,38 @@ export async function invokeWalletContract(
   const validUntil = sim.latestLedger + AUTH_ENTRY_VALIDITY_LEDGERS;
   const ownerKeypair = Keypair.fromSecret(user.ownerSecretKey);
 
-  const signedAuth = sim.result.auth.map((entry) => {
-    const clone = xdr.SorobanAuthorizationEntry.fromXDR(entry.toXDR());
-    const addrCreds = getAddressCredentials(clone.credentials());
-    if (!addrCreds) {
-      return clone;
-    }
+  const signedAuth = await Promise.all(
+    sim.result.auth.map(async (entry) => {
+      const addrCreds = getAddressCredentials(entry.credentials());
+      if (!addrCreds) {
+        return entry;
+      }
 
-    const addr = Address.fromScAddress(addrCreds.address()).toString();
-    if (addr !== user.contractId) {
-      return clone;
-    }
+      const addr = Address.fromScAddress(addrCreds.address()).toString();
+      if (addr !== user.contractId) {
+        return entry;
+      }
 
-    addrCreds.signatureExpirationLedger(validUntil);
-
-    const preimage = buildAuthorizationEntryPreimage(
-      clone,
-      validUntil,
-      NETWORK_PASSPHRASE
-    );
-    const payload = hash(preimage.toXDR());
-    const signature = ownerKeypair.sign(payload);
-
-    addrCreds.signature(xdr.ScVal.scvBytes(Buffer.from(signature)));
-    return clone;
-  });
+      return authorizeEntry(entry, ownerKeypair, validUntil, NETWORK_PASSPHRASE);
+    })
+  );
 
   // The invokeHostFunction Operation exposes the auth entries that
   // assembleTransaction will prefer over the simulated ones.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (tx.operations[0] as any).auth = signedAuth;
 
-  const assembled = rpc.assembleTransaction(tx, sim).build();
+  // Re-simulate with the signed auth entries in enforce mode so resource
+  // estimates include the cost of signature verification.
+  const simWithAuth = await server.simulateTransaction(tx, undefined, 'enforce');
+  if (rpc.Api.isSimulationError(simWithAuth)) {
+    throw new Error(`Re-simulation failed: ${simWithAuth.error}`);
+  }
+  if (!rpc.Api.isSimulationSuccess(simWithAuth) || !simWithAuth.result) {
+    throw new Error('Re-simulation returned no result');
+  }
+
+  const assembled = rpc.assembleTransaction(tx, simWithAuth).build();
   assembled.sign(deployer);
 
   const result = await server.sendTransaction(assembled);

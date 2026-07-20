@@ -22,6 +22,9 @@ export interface User {
   pinHash?: string;
   pinResetCode?: string;
   createdAt: string;
+  updatedAt?: string;
+  username?: string;
+  phone?: string;
 
   // Lost-passkey recovery state
   recoveryInitiatedAt?: string;
@@ -65,9 +68,106 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+export function normalizeUsername(username: string): string {
+  return username.trim().toLowerCase().replace(/^@/, '');
+}
+
+export function isValidUsername(username: string): boolean {
+  const normalized = normalizeUsername(username);
+  if (normalized.length < 3 || normalized.length > 30) {
+    return false;
+  }
+  return /^[a-z0-9_.-]+$/.test(normalized);
+}
+
+export function normalizePhone(phone: string): string {
+  const trimmed = phone.trim();
+  const hasPlus = trimmed.startsWith('+');
+  const digits = trimmed.replace(/\D/g, '');
+  return hasPlus ? `+${digits}` : digits;
+}
+
+export function isValidPhone(phone: string): boolean {
+  const normalized = normalizePhone(phone);
+  if (!normalized.startsWith('+')) {
+    return false;
+  }
+  const digits = normalized.slice(1);
+  if (digits.length < 10 || digits.length > 15) {
+    return false;
+  }
+  return /^\d+$/.test(digits);
+}
+
 export function getUserByEmail(email: string): User | undefined {
   const users = loadUsers();
   return users[normalizeEmail(email)];
+}
+
+export function getUserByUsername(username: string): User | undefined {
+  const normalized = normalizeUsername(username);
+  const users = loadUsers();
+  return Object.values(users).find((user) => user.username === normalized);
+}
+
+export function getUserByPhone(phone: string): User | undefined {
+  const normalized = normalizePhone(phone);
+  const users = loadUsers();
+  return Object.values(users).find((user) => user.phone === normalized);
+}
+
+export interface ProfileUpdate {
+  username?: string | null;
+  phone?: string | null;
+}
+
+export function setProfile(email: string, profile: ProfileUpdate): User {
+  const users = loadUsers();
+  const normalizedEmail = normalizeEmail(email);
+  const user = users[normalizedEmail];
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const { username, phone } = profile;
+
+  if (username !== undefined) {
+    if (username === null || username.trim() === '') {
+      delete user.username;
+    } else {
+      if (!isValidUsername(username)) {
+        throw new Error(
+          'Username must be 3-30 characters and can only contain letters, numbers, underscores, periods, and hyphens'
+        );
+      }
+      const normalizedUsername = normalizeUsername(username);
+      const existing = getUserByUsername(normalizedUsername);
+      if (existing && normalizeEmail(existing.email) !== normalizedEmail) {
+        throw new Error('Username already taken');
+      }
+      user.username = normalizedUsername;
+    }
+  }
+
+  if (phone !== undefined) {
+    if (phone === null || phone.trim() === '') {
+      delete user.phone;
+    } else {
+      if (!isValidPhone(phone)) {
+        throw new Error('Phone number must include a country code starting with + and 10-15 digits');
+      }
+      const normalizedPhone = normalizePhone(phone);
+      const existing = getUserByPhone(normalizedPhone);
+      if (existing && normalizeEmail(existing.email) !== normalizedEmail) {
+        throw new Error('Phone number already registered');
+      }
+      user.phone = normalizedPhone;
+    }
+  }
+
+  user.updatedAt = new Date().toISOString();
+  saveUsers(users);
+  return user;
 }
 
 export function createUser(email: string, verificationCode: string): User {

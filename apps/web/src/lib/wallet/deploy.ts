@@ -1,5 +1,6 @@
 import {
   Address,
+  Contract,
   Keypair,
   Networks,
   Operation,
@@ -210,13 +211,27 @@ export function getPlatformKeypair(): Keypair {
   return Keypair.fromSecret(secret);
 }
 
+function getAxiosErrorDetail(err: unknown): string | undefined {
+  if (err && typeof err === 'object') {
+    const maybe = err as { response?: { data?: { detail?: string } }; message?: string };
+    return maybe.response?.data?.detail ?? maybe.message;
+  }
+  return undefined;
+}
+
 export async function fundAccount(publicKey: string): Promise<void> {
   try {
     const server = new rpc.Server(RPC_URL);
     await server.requestAirdrop(publicKey);
   } catch (err) {
-    // Friendbot may return a 200 even if already funded; ignore errors in testnet mode.
-    console.log('Friendbot funding attempt:', err);
+    // Friendbot returns 400 once an account already has the starting balance.
+    // That is expected across restarts, so only log real failures.
+    const detail = getAxiosErrorDetail(err);
+    if (detail?.toLowerCase().includes('already funded')) {
+      console.log(`Friendbot: ${publicKey} is already funded.`);
+      return;
+    }
+    console.log('Friendbot funding attempt failed:', detail ?? err);
   }
 }
 
@@ -261,6 +276,66 @@ export async function ensureWasmUploaded(server: rpc.Server, deployer: Keypair):
   return Buffer.from(returnedHash);
 }
 
+function formatFailedResult(
+  tx: rpc.Api.GetFailedTransactionResponse
+): string {
+  if (!tx.resultXdr) {
+    return 'no result XDR';
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const resultAny = tx.resultXdr as any;
+  const resultUnion =
+    typeof resultAny.result === 'function' ? resultAny.result() : resultAny.result;
+
+  const txCode =
+    resultUnion?.switch?.().name ??
+    resultUnion?.switch?.().value ??
+    'unknown';
+
+  const opResults =
+    typeof resultUnion?.results === 'function'
+      ? resultUnion.results()
+      : resultUnion?.results;
+
+  const opCodes = Array.isArray(opResults)
+    ? opResults.map((op: unknown, idx: number) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const opAny = op as any;
+        const opCode =
+          opAny?.switch?.().name ?? opAny?.switch?.().value ?? 'unknown';
+
+        const hostResult = opAny?.tr?.()?.invokeHostFunctionResult?.();
+        if (hostResult) {
+          const hostCode =
+            hostResult?.switch?.().name ??
+            hostResult?.switch?.().value ??
+            'unknown';
+          return `op${idx}=${opCode},host=${hostCode}`;
+        }
+
+        return `op${idx}=${opCode}`;
+      })
+    : [];
+
+  return opCodes.length
+    ? `tx=${txCode}; ${opCodes.join('; ')}`
+    : `tx=${txCode}`;
+}
+
+function resultXdrToBase64(
+  resultXdr: rpc.Api.GetFailedTransactionResponse['resultXdr']
+): string {
+  if (!resultXdr) return '';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyResult = resultXdr as any;
+  if (typeof anyResult.toXDR === 'function') {
+    return anyResult.toXDR('base64');
+  }
+  if (typeof resultXdr === 'string') return resultXdr;
+  return '';
+}
+
 export async function pollTransaction(
   server: rpc.Server,
   hash: string,
@@ -272,11 +347,53 @@ export async function pollTransaction(
       return tx as rpc.Api.GetSuccessfulTransactionResponse;
     }
     if (tx.status === 'FAILED') {
-      throw new Error(`Transaction failed: ${tx.resultXdr}`);
+      const detail = formatFailedResult(tx);
+      console.error('Transaction failed:', {
+        detail,
+        txHash: tx.txHash,
+        ledger: tx.ledger,
+        resultXdr: resultXdrToBase64(tx.resultXdr),
+      });
+      throw new Error(`Transaction failed: ${detail}`);
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   throw new Error('Transaction polling timed out');
+}
+
+function i128ToBigInt(value: xdr.ScVal): bigint {
+  const i128 = value.i128();
+  const hi = i128.hi().toBigInt();
+  const lo = i128.lo().toBigInt();
+  return (hi << 64n) + lo;
+}
+
+export async function getTokenBalance(
+  tokenContractId: string,
+  holderAddress: string
+): Promise<bigint> {
+  const server = new rpc.Server(RPC_URL);
+  const deployer = getPlatformKeypair();
+  await fundAccount(deployer.publicKey());
+  const account = await server.getAccount(deployer.publicKey());
+
+  const tokenContract = new Contract(tokenContractId);
+  const tx = new TransactionBuilder(account, {
+    fee: '100000',
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(tokenContract.call('balance', new Address(holderAddress).toScVal()))
+    .setTimeout(0)
+    .build();
+
+  const sim = await server.simulateTransaction(tx);
+  if (rpc.Api.isSimulationError(sim)) {
+    throw new Error(`Balance simulation failed: ${sim.error}`);
+  }
+  if (!rpc.Api.isSimulationSuccess(sim) || !sim.result) {
+    throw new Error('Balance simulation returned no result');
+  }
+  return i128ToBigInt(sim.result.retval);
 }
 
 export async function deployWallet(
