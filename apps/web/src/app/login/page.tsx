@@ -91,6 +91,12 @@ export default function LoginPage() {
             Sign up
           </a>
         </p>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          Lost your passkey?{' '}
+          <a href="/recover" className="text-pocketlet-600 hover:underline">
+            Recover your account
+          </a>
+        </p>
       </div>
     </main>
   );

@@ -14,6 +14,12 @@ import {
   setPinResetCode,
   verifyPinResetCode,
   clearPinResetCode,
+  setRecoveryInitiated,
+  recordRecoveryAttempt,
+  isRecoveryLocked,
+  verifyRecoveryCode,
+  isRecoveryReady,
+  clearRecoveryState,
 } from './store';
 
 let dataDir: string;
@@ -86,5 +92,76 @@ describe('auth store', () => {
     expect(verifyPinResetCode('reset@example.com', '111111')).toBe(false);
     clearPinResetCode('reset@example.com');
     expect(verifyPinResetCode('reset@example.com', '987654')).toBe(false);
+  });
+
+  it('stores a recovery request', () => {
+    createUser('recover@example.com', '000000');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const user = setRecoveryInitiated('recover@example.com', '123456', expiresAt);
+    expect(user.recoveryCode).toBe('123456');
+    expect(user.recoveryCodeExpiresAt).toBe(expiresAt);
+    expect(user.recoveryAttempts).toBe(0);
+    expect(user.recoveryVerifiedAt).toBeUndefined();
+  });
+
+  it('verifies a valid recovery code', () => {
+    createUser('recover@example.com', '000000');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    setRecoveryInitiated('recover@example.com', '123456', expiresAt);
+    const user = verifyRecoveryCode('recover@example.com', '123456');
+    expect(user.recoveryVerifiedAt).toBeDefined();
+    expect(user.recoveryCode).toBeUndefined();
+    expect(user.recoveryAttempts).toBeUndefined();
+  });
+
+  it('rejects an expired recovery code', () => {
+    createUser('recover@example.com', '000000');
+    const expiresAt = new Date(Date.now() - 1).toISOString();
+    setRecoveryInitiated('recover@example.com', '123456', expiresAt);
+    expect(() => verifyRecoveryCode('recover@example.com', '123456')).toThrow('expired');
+  });
+
+  it('rejects an invalid recovery code and records attempts', () => {
+    createUser('recover@example.com', '000000');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    setRecoveryInitiated('recover@example.com', '123456', expiresAt);
+    expect(() => verifyRecoveryCode('recover@example.com', '000000')).toThrow('Invalid');
+    expect(getUserByEmail('recover@example.com')?.recoveryAttempts).toBe(1);
+  });
+
+  it('locks recovery after too many failed attempts', () => {
+    createUser('recover@example.com', '000000');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    setRecoveryInitiated('recover@example.com', '123456', expiresAt);
+    expect(isRecoveryLocked('recover@example.com')).toBe(false);
+    recordRecoveryAttempt('recover@example.com');
+    recordRecoveryAttempt('recover@example.com');
+    expect(isRecoveryLocked('recover@example.com')).toBe(false);
+    recordRecoveryAttempt('recover@example.com');
+    expect(isRecoveryLocked('recover@example.com')).toBe(true);
+    expect(() => verifyRecoveryCode('recover@example.com', '123456')).toThrow('locked');
+  });
+
+  it('reports recovery readiness based on waiting period', () => {
+    createUser('recover@example.com', '000000');
+    process.env.RECOVERY_WAITING_PERIOD_MS = '60000';
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    setRecoveryInitiated('recover@example.com', '123456', expiresAt);
+    verifyRecoveryCode('recover@example.com', '123456');
+    expect(isRecoveryReady('recover@example.com')).toBe(false);
+    const later = Date.now() + 2 * 60 * 1000;
+    expect(isRecoveryReady('recover@example.com', later)).toBe(true);
+    delete process.env.RECOVERY_WAITING_PERIOD_MS;
+  });
+
+  it('clears recovery state', () => {
+    createUser('recover@example.com', '000000');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    setRecoveryInitiated('recover@example.com', '123456', expiresAt);
+    verifyRecoveryCode('recover@example.com', '123456');
+    const user = clearRecoveryState('recover@example.com');
+    expect(user.recoveryCode).toBeUndefined();
+    expect(user.recoveryVerifiedAt).toBeUndefined();
+    expect(user.recoveryInitiatedAt).toBeUndefined();
   });
 });
