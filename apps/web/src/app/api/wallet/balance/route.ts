@@ -3,15 +3,8 @@ import { cookies } from 'next/headers';
 import { verifySessionToken } from '@/lib/auth/session';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/config';
 import { getUserByEmail } from '@/lib/auth/store';
-import {
-  fundAccount,
-  getPlatformKeypair,
-  getTokenBalance,
-  RPC_URL,
-  NETWORK_PASSPHRASE,
-} from '@/lib/wallet/deploy';
+import { getTokenBalance } from '@/lib/wallet/deploy';
 import { getXlmContractId, getUsdcContractId } from '@/lib/wallet/assets';
-import { Contract, Address, rpc, TransactionBuilder } from '@stellar/stellar-sdk';
 
 export async function GET() {
   const cookieStore = await cookies();
