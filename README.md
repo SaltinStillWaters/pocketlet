@@ -166,8 +166,6 @@ pnpm run typecheck          # Run TypeScript type checking on the web app
 
 ![Home screen showing wallet balance](./screenshots/wallet-connected-balance.png)
 
-![Debug home view](./screenshots/debug-home.png)
-
 ### Send Flow
 
 ![Send review screen](./screenshots/debug-send-review.png)
@@ -176,7 +174,8 @@ pnpm run typecheck          # Run TypeScript type checking on the web app
 
 ![Send confirming](./screenshots/debug-send-confirming.png)
 
-![Send error state](./screenshots/debug-send-error.png)
+<img width="606" height="518" alt="image" src="https://github.com/user-attachments/assets/fe0a0a74-92dd-46d1-8d49-2546d6dd79ea" />
+
 
 ## License
 
