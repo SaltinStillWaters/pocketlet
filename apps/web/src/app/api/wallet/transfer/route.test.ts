@@ -34,6 +34,14 @@ vi.mock('@/lib/wallet/invoke', () => ({
   addressScVal: vi.fn().mockReturnValue('address'),
 }));
 
+vi.mock('@/lib/wallet/deploy', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/wallet/deploy')>();
+  return {
+    ...actual,
+    getTokenBalance: vi.fn().mockResolvedValue(BigInt('100000000')),
+  };
+});
+
 const SENDER_ADDRESS = 'GCCUPAD2H2RHIQMAPPY6RPLOVCAU5MY5BA43UPKU2UGB4AIEPJSXDDGI';
 const RECIPIENT_ADDRESS = 'GCHCVLYHMRISIGAYR6HA6LNNMD5OTLLUFKIEZMXEZ4ZPM27SAK5TI46P';
 

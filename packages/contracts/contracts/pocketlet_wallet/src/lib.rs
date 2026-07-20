@@ -1,8 +1,11 @@
 #![no_std]
 use soroban_sdk::{
     auth::{Context, CustomAccountInterface},
-    contract, contracterror, contractimpl, contracttype, crypto::Hash, symbol_short,
-    token::TokenClient, Address, Bytes, BytesN, Env, IntoVal, Val, Vec,
+    contract, contracterror, contractimpl, contracttype,
+    crypto::Hash,
+    symbol_short,
+    token::TokenClient,
+    Address, Bytes, BytesN, Env, IntoVal, Val, Vec,
 };
 
 #[contracttype]
@@ -51,9 +54,7 @@ impl PocketletWallet {
         if env.storage().instance().has(&DataKey::Owner) {
             return Err(WalletError::AlreadyInitialized);
         }
-        env.storage()
-            .instance()
-            .set(&DataKey::Owner, &owner_pubkey);
+        env.storage().instance().set(&DataKey::Owner, &owner_pubkey);
         env.storage()
             .instance()
             .set(&DataKey::RecoveryAdmin, &recovery_admin);

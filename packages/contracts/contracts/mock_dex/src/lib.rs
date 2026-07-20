@@ -40,14 +40,14 @@ impl MockDex {
         let sell = TokenClient::new(&env, &sell_token);
         sell.transfer(
             &seller,
-            &MuxedAddress::from(env.current_contract_address()),
+            MuxedAddress::from(env.current_contract_address()),
             &sell_amount,
         );
 
         let buy = TokenClient::new(&env, &buy_token);
         buy.transfer(
             &env.current_contract_address(),
-            &MuxedAddress::from(seller.clone()),
+            MuxedAddress::from(seller.clone()),
             &buy_amount,
         );
 

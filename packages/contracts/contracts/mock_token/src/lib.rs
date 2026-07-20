@@ -29,13 +29,7 @@ pub struct MockToken;
 
 #[contractimpl]
 impl MockToken {
-    pub fn __constructor(
-        env: Env,
-        admin: Address,
-        name: String,
-        symbol: String,
-        decimals: u32,
-    ) {
+    pub fn __constructor(env: Env, admin: Address, name: String, symbol: String, decimals: u32) {
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::Name, &name);
         env.storage().instance().set(&DataKey::Symbol, &symbol);
@@ -96,13 +90,7 @@ impl TokenInterface for MockToken {
         Self::add_balance(&env, to.address(), amount);
     }
 
-    fn transfer_from(
-        env: Env,
-        spender: Address,
-        from: Address,
-        to: Address,
-        amount: i128,
-    ) {
+    fn transfer_from(env: Env, spender: Address, from: Address, to: Address, amount: i128) {
         if amount < 0 {
             panic_with_error!(&env, TokenError::NegativeAmount);
         }
@@ -112,9 +100,7 @@ impl TokenInterface for MockToken {
         if allowance < amount {
             panic_with_error!(&env, TokenError::InsufficientAllowance);
         }
-        env.storage()
-            .persistent()
-            .set(&key, &(allowance - amount));
+        env.storage().persistent().set(&key, &(allowance - amount));
         Self::sub_balance(&env, from, amount);
         Self::add_balance(&env, to, amount);
     }
@@ -137,14 +123,15 @@ impl TokenInterface for MockToken {
         if allowance < amount {
             panic_with_error!(&env, TokenError::InsufficientAllowance);
         }
-        env.storage()
-            .persistent()
-            .set(&key, &(allowance - amount));
+        env.storage().persistent().set(&key, &(allowance - amount));
         Self::sub_balance(&env, from, amount);
     }
 
     fn decimals(env: Env) -> u32 {
-        env.storage().instance().get(&DataKey::Decimals).unwrap_or(7)
+        env.storage()
+            .instance()
+            .get(&DataKey::Decimals)
+            .unwrap_or(7)
     }
 
     fn name(env: Env) -> String {
