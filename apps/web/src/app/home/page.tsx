@@ -90,12 +90,20 @@ export default function HomePage() {
       <div className="mx-auto max-w-md">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-pocketlet-600">Pocketlet</h1>
-          <button
-            onClick={logout}
-            className="text-sm text-gray-500 underline hover:text-gray-700"
-          >
-            Log out
-          </button>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/profile"
+              className="text-sm font-medium text-pocketlet-600 hover:text-pocketlet-700"
+            >
+              Profile
+            </Link>
+            <button
+              onClick={logout}
+              className="text-sm text-gray-500 underline hover:text-gray-700"
+            >
+              Log out
+            </button>
+          </div>
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-lg">

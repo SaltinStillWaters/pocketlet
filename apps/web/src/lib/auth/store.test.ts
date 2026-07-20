@@ -20,6 +20,13 @@ import {
   verifyRecoveryCode,
   isRecoveryReady,
   clearRecoveryState,
+  normalizeUsername,
+  isValidUsername,
+  normalizePhone,
+  isValidPhone,
+  getUserByUsername,
+  getUserByPhone,
+  setProfile,
 } from './store';
 
 let dataDir: string;
@@ -163,5 +170,98 @@ describe('auth store', () => {
     expect(user.recoveryCode).toBeUndefined();
     expect(user.recoveryVerifiedAt).toBeUndefined();
     expect(user.recoveryInitiatedAt).toBeUndefined();
+  });
+});
+
+describe('profile identifiers', () => {
+  it('normalizes usernames', () => {
+    expect(normalizeUsername('  @Alice_123  ')).toBe('alice_123');
+    expect(normalizeUsername('bob')).toBe('bob');
+    expect(normalizeUsername('@charlie')).toBe('charlie');
+  });
+
+  it('validates usernames', () => {
+    expect(isValidUsername('alice')).toBe(true);
+    expect(isValidUsername('Alice_123')).toBe(true);
+    expect(isValidUsername('bob.test-1')).toBe(true);
+    expect(isValidUsername('ab')).toBe(false); // too short
+    expect(isValidUsername('a'.repeat(31))).toBe(false); // too long
+    expect(isValidUsername('alice@example')).toBe(false); // @ not allowed
+    expect(isValidUsername('alice space')).toBe(false);
+  });
+
+  it('normalizes phone numbers', () => {
+    expect(normalizePhone('+63 912 345 6789')).toBe('+639123456789');
+    expect(normalizePhone('+1-800-555-0199')).toBe('+18005550199');
+    expect(normalizePhone('09123456789')).toBe('09123456789'); // no plus, digits preserved
+  });
+
+  it('validates phone numbers', () => {
+    expect(isValidPhone('+639123456789')).toBe(true);
+    expect(isValidPhone('+18005550199')).toBe(true);
+    expect(isValidPhone('09123456789')).toBe(false); // missing +
+    expect(isValidPhone('+123')).toBe(false); // too short
+    expect(isValidPhone('+1' + '0'.repeat(15))).toBe(false); // too long
+    expect(isValidPhone('+abcdefghij')).toBe(false);
+  });
+
+  it('looks up users by username and phone', () => {
+    createUser('alice@example.com', '000000');
+    setProfile('alice@example.com', { username: 'alice', phone: '+639123456789' });
+
+    const byUsername = getUserByUsername('ALICE');
+    expect(byUsername?.email).toBe('alice@example.com');
+
+    const byPhone = getUserByPhone('+63 912 345 6789');
+    expect(byPhone?.email).toBe('alice@example.com');
+
+    expect(getUserByUsername('unknown')).toBeUndefined();
+    expect(getUserByPhone('+639000000000')).toBeUndefined();
+  });
+
+  it('stores a profile and updates updatedAt', () => {
+    createUser('bob@example.com', '000000');
+    const user = setProfile('bob@example.com', {
+      username: 'Bob_Test',
+      phone: '+1-800-555-0199',
+    });
+    expect(user.username).toBe('bob_test');
+    expect(user.phone).toBe('+18005550199');
+    expect(user.updatedAt).toBeDefined();
+  });
+
+  it('allows clearing profile fields', () => {
+    createUser('carol@example.com', '000000');
+    setProfile('carol@example.com', { username: 'carol', phone: '+639123456789' });
+    const cleared = setProfile('carol@example.com', { username: null, phone: '' });
+    expect(cleared.username).toBeUndefined();
+    expect(cleared.phone).toBeUndefined();
+  });
+
+  it('rejects duplicate usernames and phones from different users', () => {
+    createUser('alice@example.com', '000000');
+    createUser('bob@example.com', '000000');
+    setProfile('alice@example.com', { username: 'taken', phone: '+639123456789' });
+
+    expect(() => setProfile('bob@example.com', { username: 'taken' })).toThrow('Username already taken');
+    expect(() => setProfile('bob@example.com', { phone: '+639123456789' })).toThrow(
+      'Phone number already registered'
+    );
+  });
+
+  it('allows a user to keep their own username or phone', () => {
+    createUser('alice@example.com', '000000');
+    setProfile('alice@example.com', { username: 'alice', phone: '+639123456789' });
+    const updated = setProfile('alice@example.com', { username: 'alice', phone: '+639123456789' });
+    expect(updated.username).toBe('alice');
+    expect(updated.phone).toBe('+639123456789');
+  });
+
+  it('rejects invalid profile values', () => {
+    createUser('dave@example.com', '000000');
+    expect(() => setProfile('dave@example.com', { username: 'ab' })).toThrow('Username must be');
+    expect(() => setProfile('dave@example.com', { phone: '09123456789' })).toThrow(
+      'Phone number must include'
+    );
   });
 });
