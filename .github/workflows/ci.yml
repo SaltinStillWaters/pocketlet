@@ -69,13 +69,8 @@ jobs:
         with:
           workspaces: packages/contracts
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config libdbus-1-dev libudev-dev libusb-1.0-0-dev
-
       - name: Install Stellar CLI
-        run: cargo install stellar-cli --locked
+        uses: stellar/stellar-cli@v27.0.0
 
       - name: Check formatting
         run: cargo fmt --all -- --check
