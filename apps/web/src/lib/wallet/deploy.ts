@@ -34,6 +34,137 @@ function getDataDir(): string {
   return process.env.POCKETLET_DATA_DIR ?? join(process.cwd(), '.data');
 }
 
+const DEX_WASM_PATH = join(
+  process.cwd(),
+  '..',
+  '..',
+  'packages',
+  'contracts',
+  'target',
+  'wasm32v1-none',
+  'release',
+  'mock_dex.wasm'
+);
+
+export function loadDexWasm(): Buffer {
+  return readFileSync(DEX_WASM_PATH);
+}
+
+export async function ensureDexWasmUploaded(
+  server: rpc.Server,
+  deployer: Keypair
+): Promise<Buffer> {
+  const wasm = loadDexWasm();
+  const wasmHash = computeWasmHash(wasm);
+
+  try {
+    await server.getContractWasmByHash(wasmHash.toString('hex'));
+    return wasmHash;
+  } catch {
+    // Wasm not on chain yet; upload it.
+  }
+
+  const account = await server.getAccount(deployer.publicKey());
+  const uploadOp = Operation.uploadContractWasm({ wasm, source: deployer.publicKey() });
+  const tx = new TransactionBuilder(account, {
+    fee: '100000',
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(uploadOp)
+    .setTimeout(30)
+    .build();
+
+  const prepared = await server.prepareTransaction(tx);
+  prepared.sign(deployer);
+  const result = await server.sendTransaction(prepared);
+  const txResponse = await pollTransaction(server, result.hash);
+  if (!txResponse.returnValue) {
+    throw new Error('DEX wasm upload did not return a value');
+  }
+  const returnedHash = txResponse.returnValue.bytes();
+  return Buffer.from(returnedHash);
+}
+
+export async function deployDex(server: rpc.Server, deployer: Keypair): Promise<string> {
+  const wasmHash = await ensureDexWasmUploaded(server, deployer);
+
+  const account = await server.getAccount(deployer.publicKey());
+  const deployOp = Operation.createCustomContract({
+    wasmHash,
+    address: new Address(deployer.publicKey()),
+    constructorArgs: [],
+  });
+
+  const tx = new TransactionBuilder(account, {
+    fee: '1000000',
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(deployOp)
+    .setTimeout(30)
+    .build();
+
+  const prepared = await server.prepareTransaction(tx);
+  prepared.sign(deployer);
+  const result = await server.sendTransaction(prepared);
+  const txResponse = await pollTransaction(server, result.hash);
+
+  if (!txResponse.returnValue) {
+    throw new Error('DEX deployment did not return a contract address');
+  }
+  return Address.fromScVal(txResponse.returnValue).toString();
+}
+
+function loadOrCreateDexContractId(): string | undefined {
+  const fromEnv = process.env.DEX_CONTRACT_ID;
+  if (fromEnv) {
+    return fromEnv;
+  }
+
+  const dataDir = getDataDir();
+  const dexFile = join(dataDir, 'dex_contract_id');
+  if (existsSync(dexFile)) {
+    return readFileSync(dexFile, 'utf-8').trim();
+  }
+
+  return undefined;
+}
+
+function saveDexContractId(contractId: string): void {
+  const dataDir = getDataDir();
+  if (!existsSync(dataDir)) {
+    mkdirSync(dataDir, { recursive: true });
+  }
+  writeFileSync(join(dataDir, 'dex_contract_id'), contractId);
+}
+
+/**
+ * Returns the DEX contract address used for swaps.
+ *
+ * Order of precedence:
+ *   1. `DEX_CONTRACT_ID` environment variable
+ *   2. `apps/web/.data/dex_contract_id` (auto-generated on testnet)
+ *   3. Auto-deploy the bundled `mock_dex.wasm` once and cache the address
+ *
+ * In production, always set `DEX_CONTRACT_ID` via a secrets manager.
+ */
+export async function getDexContractId(): Promise<string> {
+  const cached = loadOrCreateDexContractId();
+  if (cached) {
+    return cached;
+  }
+
+  const server = new rpc.Server(RPC_URL);
+  const deployer = getPlatformKeypair();
+  await fundAccount(deployer.publicKey());
+  const contractId = await deployDex(server, deployer);
+  saveDexContractId(contractId);
+  console.warn(
+    'DEX_CONTRACT_ID is not set. The bundled mock_dex.wasm has been deployed for testnet and saved to:'
+  );
+  console.warn(join(getDataDir(), 'dex_contract_id'));
+  return contractId;
+}
+
 function loadOrCreateDeployerSecret(): string {
   const fromEnv = process.env.PLATFORM_SECRET_KEY;
   if (fromEnv) {

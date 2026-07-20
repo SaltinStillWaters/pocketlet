@@ -142,6 +142,13 @@ function parseInvokeHostFunctionOperation(
   const contract = op.address;
 
   if (functionName === 'swap') {
+    const outgoing = op.asset_balance_changes.find(
+      (change) => change.from === walletAddress && change.to !== walletAddress
+    );
+    const incoming = op.asset_balance_changes.find(
+      (change) => change.from !== walletAddress && change.to === walletAddress
+    );
+
     return {
       id: op.transaction_hash,
       hash: op.transaction_hash,
@@ -150,10 +157,12 @@ function parseInvokeHostFunctionOperation(
       createdAt: op.created_at,
       ledger: 0,
       fee: '0',
-      asset: USDC_ASSET,
-      amount: '0',
-      sellAsset: 'unknown',
-      buyAsset: 'unknown',
+      asset: outgoing ? describeAssetFromBalanceChange(outgoing) : USDC_ASSET,
+      amount: outgoing ? formatAmountFromStroops(outgoing.amount) : '0',
+      sellAsset: outgoing ? describeAssetFromBalanceChange(outgoing) : 'unknown',
+      sellAmount: outgoing ? formatAmountFromStroops(outgoing.amount) : '0',
+      buyAsset: incoming ? describeAssetFromBalanceChange(incoming) : 'unknown',
+      buyAmount: incoming ? formatAmountFromStroops(incoming.amount) : '0',
     };
   }
 

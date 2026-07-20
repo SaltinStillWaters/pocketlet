@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { amountToBaseUnits } from './invoke';
+import { amountToBaseUnits, calculateMinBuyAmount } from './invoke';
 
 describe('amountToBaseUnits', () => {
   it('converts an integer amount', () => {
@@ -20,5 +20,19 @@ describe('amountToBaseUnits', () => {
 
   it('handles leading-zero integer part', () => {
     expect(amountToBaseUnits('0.0000001')).toBe(1n);
+  });
+});
+
+describe('calculateMinBuyAmount', () => {
+  it('returns the full amount with zero slippage', () => {
+    expect(calculateMinBuyAmount(100_000_000n, 0)).toBe(100_000_000n);
+  });
+
+  it('applies 1% slippage', () => {
+    expect(calculateMinBuyAmount(100_000_000n, 100)).toBe(99_000_000n);
+  });
+
+  it('applies 0.5% slippage', () => {
+    expect(calculateMinBuyAmount(100_000_000n, 50)).toBe(99_500_000n);
   });
 });

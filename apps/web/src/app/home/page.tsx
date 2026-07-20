@@ -107,7 +107,7 @@ export default function HomePage() {
             {format(data.xlm)} XLM
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="mt-6 grid grid-cols-3 gap-3">
             <Link
               href="/receive"
               className="rounded-lg bg-pocketlet-100 py-3 text-center font-semibold text-pocketlet-700 hover:bg-pocketlet-200"
@@ -119,6 +119,12 @@ export default function HomePage() {
               className="rounded-lg bg-pocketlet-100 py-3 text-center font-semibold text-pocketlet-700 hover:bg-pocketlet-200"
             >
               Send
+            </Link>
+            <Link
+              href="/swap"
+              className="rounded-lg bg-pocketlet-100 py-3 text-center font-semibold text-pocketlet-700 hover:bg-pocketlet-200"
+            >
+              Swap
             </Link>
           </div>
         </div>

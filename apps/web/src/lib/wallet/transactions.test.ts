@@ -170,6 +170,31 @@ describe('transaction parser', () => {
     expect(tx?.recipient).toBe(OTHER_ADDRESS);
   });
 
+  it('classifies a swap invoke operation with balance changes', () => {
+    const op = makeInvokeOp({
+      function: 'swap',
+      asset_balance_changes: [
+        makeBalanceChange({
+          asset_type: 'credit_alphanum4',
+          asset_code: 'USDC',
+          amount: '100000000',
+        }),
+        makeBalanceChange({
+          asset_type: 'native',
+          from: OTHER_ADDRESS,
+          to: WALLET_ADDRESS,
+          amount: '100000000',
+        }),
+      ],
+    });
+    const tx = classifyOperation(op, WALLET_ADDRESS, USDC_CONTRACT_ID);
+    expect(tx?.type).toBe('swap');
+    expect(tx?.sellAsset).toBe('USDC');
+    expect(tx?.sellAmount).toBe('10');
+    expect(tx?.buyAsset).toBe('XLM');
+    expect(tx?.buyAmount).toBe('10');
+  });
+
   it('builds Stellar Expert explorer URL', () => {
     expect(explorerUrl('hash123')).toBe(
       'https://stellar.expert/explorer/testnet/tx/hash123'
