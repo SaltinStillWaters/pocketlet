@@ -13,12 +13,6 @@ Pocketlet is a web-based wallet for the Philippine market that feels like a trad
 - **Transaction details** — view fees, operation details, and on-chain hash.
 - **Lost-passkey recovery** — email-based recovery with a waiting period and new passkey registration.
 
-## Screenshots
-<img width="606" height="979" alt="image" src="https://github.com/user-attachments/assets/f69005ee-46f4-4aba-9502-fe313941bfa9" />
-<img width="612" height="639" alt="image" src="https://github.com/user-attachments/assets/14a20e5b-e832-4f6f-af9e-dd605e160467" />
-<img width="596" height="452" alt="image" src="https://github.com/user-attachments/assets/cf5de516-e3ad-414b-bac1-987ca6c83cfe" />
-<img width="606" height="518" alt="image" src="https://github.com/user-attachments/assets/174c7f80-5947-4c43-bd26-3832eb76e42e" />
-
 ## Project Structure
 
 This is a pnpm monorepo:
