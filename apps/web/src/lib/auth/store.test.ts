@@ -8,6 +8,12 @@ import {
   setEmailVerified,
   setCredential,
   updateCredentialCounter,
+  setPin,
+  verifyPinForUser,
+  hasPin,
+  setPinResetCode,
+  verifyPinResetCode,
+  clearPinResetCode,
 } from './store';
 
 let dataDir: string;
@@ -55,5 +61,30 @@ describe('auth store', () => {
   it('throws when creating a duplicate user', () => {
     createUser('dup@example.com', '111111');
     expect(() => createUser('DUP@EXAMPLE.COM', '222222')).toThrow('already registered');
+  });
+
+  it('stores a PIN hash and verifies a correct PIN', () => {
+    createUser('pin@example.com', '000000');
+    setPin('pin@example.com', '123456');
+    expect(hasPin('pin@example.com')).toBe(true);
+    expect(verifyPinForUser('pin@example.com', '123456')).toBe(true);
+    expect(verifyPinForUser('pin@example.com', '654321')).toBe(false);
+  });
+
+  it('does not store the PIN in plain text', () => {
+    createUser('secure@example.com', '000000');
+    const user = setPin('secure@example.com', '654321');
+    expect(user.pinHash).toBeDefined();
+    expect(user.pinHash).not.toContain('654321');
+    expect(user.pinHash).toMatch(/^[a-f0-9]{32}:[a-f0-9]{64}$/);
+  });
+
+  it('manages PIN reset codes', () => {
+    createUser('reset@example.com', '000000');
+    setPinResetCode('reset@example.com', '987654');
+    expect(verifyPinResetCode('reset@example.com', '987654')).toBe(true);
+    expect(verifyPinResetCode('reset@example.com', '111111')).toBe(false);
+    clearPinResetCode('reset@example.com');
+    expect(verifyPinResetCode('reset@example.com', '987654')).toBe(false);
   });
 });

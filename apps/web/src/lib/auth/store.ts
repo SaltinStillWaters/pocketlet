@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
+import { hashPin, verifyPin } from './pin';
 
 export interface Credential {
   id: string;
@@ -18,6 +19,8 @@ export interface User {
   contractId?: string;
   ownerSecretKey?: string;
   stellarAddress?: string;
+  pinHash?: string;
+  pinResetCode?: string;
   createdAt: string;
 }
 
@@ -142,6 +145,60 @@ export function updateCredentialCounter(email: string, counter: number): User {
     throw new Error('User or credential not found');
   }
   user.credential.counter = counter;
+  saveUsers(users);
+  return user;
+}
+
+export function setPin(email: string, pin: string): User {
+  const users = loadUsers();
+  const normalized = normalizeEmail(email);
+  const user = users[normalized];
+  if (!user) {
+    throw new Error('User not found');
+  }
+  user.pinHash = hashPin(pin);
+  saveUsers(users);
+  return user;
+}
+
+export function verifyPinForUser(email: string, pin: string): boolean {
+  const user = getUserByEmail(email);
+  if (!user || !user.pinHash) {
+    return false;
+  }
+  return verifyPin(pin, user.pinHash);
+}
+
+export function hasPin(email: string): boolean {
+  const user = getUserByEmail(email);
+  return Boolean(user?.pinHash);
+}
+
+export function setPinResetCode(email: string, code: string): User {
+  const users = loadUsers();
+  const normalized = normalizeEmail(email);
+  const user = users[normalized];
+  if (!user) {
+    throw new Error('User not found');
+  }
+  user.pinResetCode = code;
+  saveUsers(users);
+  return user;
+}
+
+export function verifyPinResetCode(email: string, code: string): boolean {
+  const user = getUserByEmail(email);
+  return user?.pinResetCode === code;
+}
+
+export function clearPinResetCode(email: string): User {
+  const users = loadUsers();
+  const normalized = normalizeEmail(email);
+  const user = users[normalized];
+  if (!user) {
+    throw new Error('User not found');
+  }
+  delete user.pinResetCode;
   saveUsers(users);
   return user;
 }

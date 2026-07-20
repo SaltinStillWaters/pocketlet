@@ -93,7 +93,7 @@ export default function SignupPage() {
         setError(deployData.error ?? 'Wallet deployment failed');
         return;
       }
-      window.location.href = '/home';
+      window.location.href = '/pin/setup';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Passkey registration failed');
     } finally {

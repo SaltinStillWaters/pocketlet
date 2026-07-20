@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import PinModal from '@/components/PinModal';
 
 interface BalanceData {
   xlm: string;
@@ -14,6 +15,8 @@ export default function HomePage() {
   const [data, setData] = useState<BalanceData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasPin, setHasPin] = useState<boolean | null>(null);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
 
   const fetchBalance = async () => {
     const res = await fetch('/api/wallet/balance');
@@ -32,8 +35,17 @@ export default function HomePage() {
     setLoading(false);
   };
 
+  const fetchPinStatus = async () => {
+    const res = await fetch('/api/auth/pin');
+    if (res.ok) {
+      const body = (await res.json()) as { hasPin?: boolean };
+      setHasPin(body.hasPin ?? false);
+    }
+  };
+
   useEffect(() => {
     fetchBalance();
+    fetchPinStatus();
     const id = setInterval(fetchBalance, 15000);
     return () => clearInterval(id);
   }, []);
@@ -121,7 +133,45 @@ export default function HomePage() {
             Share this address to receive USDC or XLM from any Stellar wallet.
           </p>
         </div>
+
+        <div className="mt-6 rounded-2xl bg-white p-6 shadow-lg">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700">Security</h2>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                hasPin ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+              }`}
+            >
+              {hasPin ? 'PIN set' : 'No PIN'}
+            </span>
+          </div>
+          <div className="space-y-3">
+            <Link
+              href={hasPin ? '/pin/reset' : '/pin/setup'}
+              className="block rounded-lg bg-pocketlet-100 py-2.5 text-center font-semibold text-pocketlet-700 hover:bg-pocketlet-200"
+            >
+              {hasPin ? 'Reset PIN' : 'Set up PIN'}
+            </Link>
+            <button
+              onClick={() => setPinModalOpen(true)}
+              disabled={!hasPin}
+              className="w-full rounded-lg bg-gray-100 py-2.5 font-semibold text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-gray-100"
+            >
+              Test PIN confirmation
+            </button>
+          </div>
+        </div>
       </div>
+
+      <PinModal
+        isOpen={pinModalOpen}
+        title="Test PIN confirmation"
+        onConfirm={() => {
+          setPinModalOpen(false);
+          alert('PIN confirmed successfully');
+        }}
+        onCancel={() => setPinModalOpen(false)}
+      />
     </main>
   );
 }
